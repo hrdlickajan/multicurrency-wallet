@@ -10,7 +10,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Currency;
@@ -72,7 +71,7 @@ public class RateApiService {
             if (rate.validFor() == null || rate.amount().signum() <= 0 || rate.rate().signum() <= 0) {
                 throw new IllegalArgumentException("CNB rates must have a date and positive units and values.");
             }
-            return new NormalizedRate(rate.validFor(), currency, rate.rate().divide(rate.amount(), RoundingMode.UNNECESSARY));
+            return new NormalizedRate(rate.validFor(), currency, rate.rate().divide(rate.amount()));
         } catch (IllegalArgumentException | ArithmeticException | NullPointerException _) {
             log.warn("Skipping invalid or unknown CNB rate: {}", rate);
             return null;
