@@ -1,0 +1,22 @@
+meta {
+  name: 01 Deposit 10 USD
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8080/deposits
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "amount": "10",
+    "currency": "USD"
+  }
+}

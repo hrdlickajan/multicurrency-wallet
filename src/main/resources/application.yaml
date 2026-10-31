@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: multicurrency-wallet
+
+wallet:
+  cnb:
+    url: https://api.cnb.cz/cnbapi/exrates/daily
+    connect-timeout: 2s
+    request-timeout: 5s

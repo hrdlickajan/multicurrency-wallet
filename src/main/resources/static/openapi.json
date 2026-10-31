@@ -1,0 +1,400 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Multicurrency Wallet",
+    "version": "0.0.1",
+    "description": "One shared in-memory account. Balances are kept per currency and are never exchanged. Totals are converted using CNB rates."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "paths": {
+    "/deposits": {
+      "post": {
+        "operationId": "deposit",
+        "tags": ["Wallet"],
+        "summary": "Deposit in the original currency",
+        "description": "Not idempotent: repeating a request deposits again.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoneyRequest"
+              },
+              "example": {
+                "amount": "10",
+                "currency": "USD"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The balance after this deposit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyResponse"
+                },
+                "example": {
+                  "amount": "10.00",
+                  "currency": "USD"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/withdrawals": {
+      "post": {
+        "operationId": "withdraw",
+        "tags": ["Wallet"],
+        "summary": "Withdraw from the selected currency only",
+        "description": "Can withdraw the whole balance. A missing balance counts as zero. Only the selected currency is used: with 5 USD and 100 EUR, withdrawing 10 USD fails.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoneyRequest"
+              },
+              "example": {
+                "amount": "3",
+                "currency": "USD"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The balance after this withdrawal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyResponse"
+                },
+                "example": {
+                  "amount": "7.00",
+                  "currency": "USD"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/InsufficientFunds"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/balances": {
+      "get": {
+        "operationId": "balances",
+        "tags": ["Wallet"],
+        "summary": "List balances per currency",
+        "description": "Returns every stored currency, including zero balances, or an empty list.",
+        "responses": {
+          "200": {
+            "description": "Balances per currency.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MoneyResponse"
+                  }
+                },
+                "example": [
+                  {
+                    "amount": "5.00",
+                    "currency": "EUR"
+                  },
+                  {
+                    "amount": "7.00",
+                    "currency": "USD"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/balances/total": {
+      "get": {
+        "operationId": "total",
+        "tags": ["Wallet"],
+        "summary": "Calculate the value of all balances in the selected currency",
+        "description": "Converts all balances with CNB rates and rounds the total once. Changes no balance. Returns 503 if any needed rate is missing.",
+        "parameters": [
+          {
+            "name": "currency",
+            "in": "query",
+            "required": true,
+            "description": "Target currency.",
+            "schema": {
+              "$ref": "#/components/schemas/CurrencyInput"
+            },
+            "example": "USD"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The total in the requested currency.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotalBalanceResponse"
+                },
+                "example": {
+                  "amount": "12.34",
+                  "currency": "USD",
+                  "rateStatus": "LATEST_AVAILABLE"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/RatesUnavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DecimalString": {
+        "type": "string",
+        "pattern": "^[0-9]+(\\.[0-9]+)?$",
+        "description": "Plain decimal text with the currency's fraction digits.",
+        "example": "10.00"
+      },
+      "CurrencyInput": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 3,
+        "pattern": "^[A-Za-z]{3}$",
+        "description": "Case-insensitive code of a supported currency (see Currency). Other codes, including XDR, return INVALID_MONEY."
+      },
+      "Currency": {
+        "type": "string",
+        "enum": [
+          "AUD",
+          "BRL",
+          "CAD",
+          "CHF",
+          "CNY",
+          "CZK",
+          "DKK",
+          "EUR",
+          "GBP",
+          "HKD",
+          "HUF",
+          "IDR",
+          "ILS",
+          "INR",
+          "ISK",
+          "JPY",
+          "KRW",
+          "MXN",
+          "MYR",
+          "NOK",
+          "NZD",
+          "PHP",
+          "PLN",
+          "RON",
+          "SEK",
+          "SGD",
+          "THB",
+          "TRY",
+          "USD",
+          "ZAR"
+        ]
+      },
+      "MoneyRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "properties": {
+          "amount": {
+            "type": ["string", "number"],
+            "exclusiveMinimum": 0,
+            "description": "Positive decimal, as a JSON number or string. Must fit the currency's fraction digits exactly; nothing is rounded. 1.000 USD is valid, 1.001 USD and 1.5 JPY are not."
+          },
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyInput"
+          }
+        }
+      },
+      "MoneyResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/DecimalString",
+            "description": "Balance in its original currency; never negative."
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          }
+        }
+      },
+      "TotalBalanceResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "amount",
+          "currency",
+          "rateStatus"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/DecimalString",
+            "description": "Total rounded once (HALF_EVEN) to the currency's fraction digits; never negative."
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "rateStatus": {
+            "$ref": "#/components/schemas/RateStatus"
+          }
+        }
+      },
+      "RateStatus": {
+        "type": "string",
+        "enum": ["LATEST_AVAILABLE", "STALE"],
+        "description": "LATEST_AVAILABLE: the last refresh succeeded. STALE: the last refresh failed, so cached rates are used. Weekend and holiday rates are not stale."
+      },
+      "Problem": {
+        "type": "object",
+        "description": "RFC 9457 Problem Details. Branch on code, not on message text.",
+        "required": [
+          "title",
+          "status",
+          "code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "description": "URI naming the kind of problem. Usually omitted; use code instead."
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INVALID_MONEY",
+              "INVALID_REQUEST",
+              "INSUFFICIENT_FUNDS",
+              "RATES_UNAVAILABLE",
+              "INTERNAL_ERROR"
+            ]
+          }
+        }
+      }
+    },
+    "responses": {
+      "InvalidRequest": {
+        "description": "INVALID_MONEY: nonpositive amount, too many decimal places, or unsupported currency. INVALID_REQUEST: malformed JSON, unreadable amount, or missing fields.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "examples": {
+              "invalidMoney": {
+                "value": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "Amount has too many decimal places for USD.",
+                  "code": "INVALID_MONEY"
+                }
+              },
+              "invalidRequest": {
+                "value": {
+                  "title": "Bad Request",
+                  "status": 400,
+                  "code": "INVALID_REQUEST"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InsufficientFunds": {
+        "description": "INSUFFICIENT_FUNDS: not enough in the selected currency. Nothing changes.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "RatesUnavailable": {
+        "description": "RATES_UNAVAILABLE: a required rate is missing, or CNB is unreachable and no cached table (valid for seven days) exists. No partial total is returned.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "INTERNAL_ERROR: unexpected server failure.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    }
+  }
+}

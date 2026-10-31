@@ -1,0 +1,15 @@
+meta {
+  name: 06 Total in EUR
+  type: http
+  seq: 6
+}
+
+get {
+  url: http://localhost:8080/balances/total?currency=EUR
+  body: none
+  auth: none
+}
+
+params:query {
+  currency: EUR
+}

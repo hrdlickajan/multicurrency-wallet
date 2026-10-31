@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Multicurrency Wallet",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

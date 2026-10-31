@@ -1,0 +1,22 @@
+meta {
+  name: 03 Withdraw 3 USD
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8080/withdrawals
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "amount": "3",
+    "currency": "USD"
+  }
+}
